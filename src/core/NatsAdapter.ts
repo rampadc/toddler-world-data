@@ -28,7 +28,7 @@ export class NatsAdapter {
     return this._instance || (this._instance = new this());
   }
 
-  private _request(gameMsg: ISocketMessage): Promise<ISocketMessage> {
+  private _request(gameMsg: ISocketMessage): Promise<any> {
     return new Promise<ISocketMessage>((resolve, reject) => {
       this._client.request(
         gameMsg.type.replace('/', '.').toLowerCase(), 30000, gameMsg)

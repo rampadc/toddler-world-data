@@ -4,7 +4,8 @@ import {connect, Payload} from 'ts-nats';
 import {WorldVillages} from "./WorldVillages";
 import {Secrets} from "./core/Secrets";
 import {NatsAdapter} from "./core/NatsAdapter";
-import {GameTypes} from "./core/Providers";
+import {MongoClient} from "mongodb";
+import {DbAdapter} from "./core/DbAdapter";
 
 /*******************************************************************************************************************
  * Check for credentials
@@ -24,11 +25,28 @@ process.on('SIGINT', function () {
  ******************************************************************************************************************/
 Log.service().info('Initializing world data service...');
 
-connect({
-  payload: Payload.JSON
-}).then(client => {
+
+const uri = "mongodb+srv://toddler:t0ddler@en45-simp1eus3rname-arahh.mongodb.net/test?retryWrites=true";
+const client = new MongoClient(uri, { useNewUrlParser: true });
+client.connect(err => {
+  const collection = client.db("test").collection("devices");
+  // perform actions on the collection object
+  client.close();
+});
+
+Promise.all([
+  client.connect(),
+  connect({
+    payload: Payload.JSON
+  })
+]).then(values => {
   Log.service().info('Connected to NATS server');
-  NatsAdapter.shared.client = client;
+  NatsAdapter.shared.client = values[1];
+
+  Log.service().info('Connected to MongoDB server');
+  DbAdapter.shared.db = client.db('en45');
+
+  villages.updateInternalVariables();
   villages.get();
 }).catch(error => {
   console.log(error);
