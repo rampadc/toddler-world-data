@@ -3,6 +3,7 @@ import {NatsAdapter} from "./core/NatsAdapter";
 import {Collection} from "mongodb";
 import {DbAdapter} from "./core/DbAdapter";
 import {Log} from "./core/Log";
+import {error} from "winston";
 
 export interface Point {
   x: number;
@@ -76,6 +77,7 @@ export class WorldVillages {
   }
 
   get(): Promise<void> {
+    Log.service().info('Starting villages retrieval...');
     return new Promise<void>((resolve, reject) => {
       // get latest updated_at date
       this.collection.findOne({}, {
@@ -90,8 +92,13 @@ export class WorldVillages {
           });
         } else {
           Log.service().info('Last update was too recent.');
-          reject();
+          resolve();
         }
+      }).catch(error => {
+        // assumed to be empty collection
+        this.update().then(() => {
+          resolve();
+        });
       });
     });
   }

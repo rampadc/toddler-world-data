@@ -1,11 +1,13 @@
 import {Log} from "./core/Log";
 
 import {connect, Payload} from 'ts-nats';
-import {WorldVillages} from "./WorldVillages";
 import {Secrets} from "./core/Secrets";
 import {NatsAdapter} from "./core/NatsAdapter";
 import {MongoClient} from "mongodb";
 import {DbAdapter} from "./core/DbAdapter";
+
+import {WorldVillages} from "./WorldVillages";
+import {WorldCharacters} from "./WorldCharacters";
 
 /*******************************************************************************************************************
  * Check for credentials
@@ -15,6 +17,7 @@ const password = Secrets.get('TODDLER_PASSWORD') || process.env.TODDLER_PASSWORD
 const worldId = Secrets.get('TODDLER_WORLD_ID') || process.env.TODDLER_WORLD_ID as string || 'en45';
 
 let villages = new WorldVillages(worldId);
+let characters = new WorldCharacters();
 
 process.on('SIGINT', function () {
   gracefullyExit();
@@ -48,7 +51,8 @@ Promise.all([
 
   villages.updateInternalVariables();
   villages.get().then(() => {
-  }).catch(gracefullyExit)
+    characters.get();
+  });
 }).catch(exitWithError);
 
 
