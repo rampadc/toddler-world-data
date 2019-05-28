@@ -47,11 +47,9 @@ Promise.all([
   DbAdapter.shared.db = client.db('en45');
 
   villages.updateInternalVariables();
-  villages.get();
-}).catch(error => {
-  console.log(error);
-  process.exit(1);
-});
+  villages.get().then(() => {
+  }).catch(gracefullyExit)
+}).catch(exitWithError);
 
 
 /*******************************************************************************************************************
@@ -60,4 +58,9 @@ Promise.all([
 function gracefullyExit() {
   NatsAdapter.shared.client.close();
   process.exit(0);
+}
+
+function exitWithError(error: any) {
+  Log.service().error(error);
+  process.exit(1);
 }
