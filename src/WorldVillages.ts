@@ -1,7 +1,6 @@
 import Bottleneck from 'bottleneck';
-import {Client} from "ts-nats";
-import {GameTypes} from "./Providers";
-import {NatsAdapter} from "./NatsAdapter";
+import {GameTypes} from "./core/Providers";
+import {NatsAdapter} from "./core/NatsAdapter";
 
 export interface Point {
   x: number;
@@ -10,15 +9,10 @@ export interface Point {
 
 export class WorldVillages {
   coordinates: Point[] = [];
-  limiter = new Bottleneck({
-    minTime: 200,
-    maxConcurrent: 5
-  });
   worldId: string;
-  n: NatsAdapter;
   separation = 50;
 
-  constructor(worldId: string, n: NatsAdapter) {
+  constructor(worldId: string) {
     for (let x = 0; x < 1000; x += this.separation) {
       for (let y = 0; y < 1000; y += this.separation) {
         this.coordinates.push({
@@ -28,12 +22,11 @@ export class WorldVillages {
     }
 
     this.worldId = worldId;
-    this.n = n;
   }
 
   get() {
     for (let i = 0; i < this.coordinates.length; i++) {
-      this.n.request({
+      NatsAdapter.shared.request({
         type: GameTypes.MAP_GETVILLAGES,
         data: {
           x: this.coordinates[i].x,
@@ -43,8 +36,9 @@ export class WorldVillages {
         }
       }).then(data => {
         console.log(data);
+      }).catch(error => {
+        console.log(error);
       });
-      break;
     }
   }
 }
