@@ -15,6 +15,7 @@ import {WorldCharacters} from "./WorldCharacters";
 const username = Secrets.get('TODDLER_USERNAME') || process.env.TODDLER_USERNAME as string || 'Simp1eUs3rname';
 const password = Secrets.get('TODDLER_PASSWORD') || process.env.TODDLER_PASSWORD as string || 'Passw0rd';
 const worldId = Secrets.get('TODDLER_WORLD_ID') || process.env.TODDLER_WORLD_ID as string || 'en45';
+const mongoUri = process.env.TODDLER_MONGO_URI as string || "mongodb+srv://toddler:t0ddler@en45-simp1eus3rname-arahh.mongodb.net/test?retryWrites=true";
 
 let villages = new WorldVillages(worldId);
 let characters = new WorldCharacters();
@@ -28,9 +29,7 @@ process.on('SIGINT', function () {
  ******************************************************************************************************************/
 Log.service().info('Initializing world data service...');
 
-
-const uri = "mongodb+srv://toddler:t0ddler@en45-simp1eus3rname-arahh.mongodb.net/test?retryWrites=true";
-const client = new MongoClient(uri, { useNewUrlParser: true });
+const client = new MongoClient(mongoUri, { useNewUrlParser: true });
 client.connect(err => {
   const collection = client.db("test").collection("devices");
   // perform actions on the collection object
