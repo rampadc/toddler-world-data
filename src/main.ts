@@ -14,10 +14,16 @@ import {WorldAchievements} from "./WorldAchievements";
 /*******************************************************************************************************************
  * Check for credentials
  ******************************************************************************************************************/
-const username = Secrets.get('TODDLER_USERNAME') || process.env.TODDLER_USERNAME as string || 'Simp1eUs3rname';
-const password = Secrets.get('TODDLER_PASSWORD') || process.env.TODDLER_PASSWORD as string || 'Passw0rd';
-const worldId = Secrets.get('TODDLER_WORLD_ID') || process.env.TODDLER_WORLD_ID as string || 'en45';
-const mongoUri = process.env.TODDLER_MONGO_URI as string || "mongodb+srv://toddler:t0ddler@en45-simp1eus3rname-arahh.mongodb.net/test?retryWrites=true";
+const username = Secrets.get('TODDLER_USERNAME') || process.env.TODDLER_USERNAME as string || '';
+const password = Secrets.get('TODDLER_PASSWORD') || process.env.TODDLER_PASSWORD as string || '';
+const worldId = Secrets.get('TODDLER_WORLD_ID') || process.env.TODDLER_WORLD_ID as string || '';
+const mongoUri = process.env.TODDLER_MONGO_URI as string || '';
+const natsUri = process.env.TODDLER_NATS_URI as string || '';
+
+if (worldId.trim().length == 0 || mongoUri.trim().length == 0 || natsUri.trim().length == 0) {
+  Log.service().error('Missing credentials');
+  process.exit(1);
+}
 
 let villages = new WorldVillages(worldId);
 let characters = new WorldCharacters();
