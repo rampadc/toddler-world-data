@@ -4,7 +4,7 @@ import {Collection} from "mongodb";
 import {DbAdapter} from "./core/DbAdapter";
 import {Log} from "./core/Log";
 
-export class WorldCharacters {
+export class WorldTribes {
   private collection: Collection;
   private progress = 0;
 
@@ -12,9 +12,9 @@ export class WorldCharacters {
     return new Promise<void>((resolve, reject) => {
       ids.map(id => {
         NatsAdapter.shared.request({
-          type: GameTypes.CHAR_GET_PROFILE,
+          type: GameTypes.TRIBE_GET_PROFILE,
           data: {
-            character_id: id
+            tribe_id: id
           }
         }).then((d: any) => {
           d['current'] = true;
@@ -23,7 +23,7 @@ export class WorldCharacters {
             {
               updateMany:
                 {
-                  filter: {character_id: d['character_id']},
+                  filter: {tribe_id: d['tribe_id']},
                   update: {$set: {current: false}}
                 }
             },
@@ -31,11 +31,11 @@ export class WorldCharacters {
           ], {ordered: true, w: 1}).then(() => {
             this.progress += 1;
 
-            NatsAdapter.shared.client.publish('world-date.progress.characters', {
+            NatsAdapter.shared.client.publish('world-date.progress.tribes', {
               progress: this.progress / ids.length
             });
             if (this.progress >= ids.length) {
-              Log.service().info('Completed characters retrieval.');
+              Log.service().info('Completed tribes retrieval.');
               resolve();
             }
           })
@@ -48,15 +48,15 @@ export class WorldCharacters {
   }
 
   get(): Promise<void> {
-    Log.service().info('Starting characters retrieval...');
+    Log.service().info('Starting tribes retrieval...');
     return new Promise<void>((resolve, reject) => {
       this.collection = DbAdapter.shared.collection('villages');
       let cursor = this.collection.find(
-        {current: true, character_id: {$ne: null}}
-      ).project({character_id: 1});
+        {current: true, tribe_id: {$ne: null}}
+      ).project({tribe_id: 1});
 
-      cursor.map(c => c['character_id']).toArray().then(ids => {
-        this.collection = DbAdapter.shared.collection('characters');
+      cursor.map(c => c['tribe_id']).toArray().then(ids => {
+        this.collection = DbAdapter.shared.collection('tribes');
 
         this.collection.findOne({}, {
           sort: {updated_at: -1},
@@ -69,7 +69,7 @@ export class WorldCharacters {
               resolve();
             });
           } else {
-            Log.service().info('Characters: last update was too recent.');
+            Log.service().info('Tribes: last update was too recent.');
             resolve();
           }
         }).catch(error => {

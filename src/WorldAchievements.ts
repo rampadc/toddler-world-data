@@ -4,7 +4,7 @@ import {Collection} from "mongodb";
 import {DbAdapter} from "./core/DbAdapter";
 import {Log} from "./core/Log";
 
-export class WorldCharacters {
+export class WorldAchievements {
   private collection: Collection;
   private progress = 0;
 
@@ -12,7 +12,7 @@ export class WorldCharacters {
     return new Promise<void>((resolve, reject) => {
       ids.map(id => {
         NatsAdapter.shared.request({
-          type: GameTypes.CHAR_GET_PROFILE,
+          type: GameTypes.ACHIEVEMENT_GET_CHAR_ACHIEVEMENTS,
           data: {
             character_id: id
           }
@@ -31,11 +31,11 @@ export class WorldCharacters {
           ], {ordered: true, w: 1}).then(() => {
             this.progress += 1;
 
-            NatsAdapter.shared.client.publish('world-date.progress.characters', {
+            NatsAdapter.shared.client.publish('world-date.progress.achievements', {
               progress: this.progress / ids.length
             });
             if (this.progress >= ids.length) {
-              Log.service().info('Completed characters retrieval.');
+              Log.service().info('Completed achievements retrieval.');
               resolve();
             }
           })
@@ -48,7 +48,7 @@ export class WorldCharacters {
   }
 
   get(): Promise<void> {
-    Log.service().info('Starting characters retrieval...');
+    Log.service().info('Starting achievements retrieval...');
     return new Promise<void>((resolve, reject) => {
       this.collection = DbAdapter.shared.collection('villages');
       let cursor = this.collection.find(
@@ -56,7 +56,7 @@ export class WorldCharacters {
       ).project({character_id: 1});
 
       cursor.map(c => c['character_id']).toArray().then(ids => {
-        this.collection = DbAdapter.shared.collection('characters');
+        this.collection = DbAdapter.shared.collection('achievements');
 
         this.collection.findOne({}, {
           sort: {updated_at: -1},
@@ -69,7 +69,7 @@ export class WorldCharacters {
               resolve();
             });
           } else {
-            Log.service().info('Characters: last update was too recent.');
+            Log.service().info('Achievements: last update was too recent.');
             resolve();
           }
         }).catch(error => {

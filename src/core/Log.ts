@@ -44,8 +44,9 @@ export class Log {
       level: "silly",
       format: combine(
         componentNameFormat(),
-        prettyPrint(),
-        // format.json()
+        format.timestamp(),
+        // prettyPrint(),
+        format.json()
       ),
       transports: [
         new transports.Console()

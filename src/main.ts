@@ -8,6 +8,8 @@ import {DbAdapter} from "./core/DbAdapter";
 
 import {WorldVillages} from "./WorldVillages";
 import {WorldCharacters} from "./WorldCharacters";
+import {WorldTribes} from "./WorldTribes";
+import {WorldAchievements} from "./WorldAchievements";
 
 /*******************************************************************************************************************
  * Check for credentials
@@ -19,6 +21,8 @@ const mongoUri = process.env.TODDLER_MONGO_URI as string || "mongodb+srv://toddl
 
 let villages = new WorldVillages(worldId);
 let characters = new WorldCharacters();
+let tribes = new WorldTribes();
+let achievements = new WorldAchievements();
 
 process.on('SIGINT', function () {
   gracefullyExit();
@@ -30,16 +34,12 @@ process.on('SIGINT', function () {
 Log.service().info('Initializing world data service...');
 
 const client = new MongoClient(mongoUri, { useNewUrlParser: true });
-client.connect(err => {
-  const collection = client.db("test").collection("devices");
-  // perform actions on the collection object
-  client.close();
-});
 
 Promise.all([
   client.connect(),
   connect({
-    payload: Payload.JSON
+    payload: Payload.JSON,
+    reconnect: true
   })
 ]).then(values => {
   Log.service().info('Connected to NATS server');
@@ -49,8 +49,15 @@ Promise.all([
   DbAdapter.shared.db = client.db('en45');
 
   villages.updateInternalVariables();
+
   villages.get().then(() => {
-    characters.get();
+    characters.get().then(() => {
+      tribes.get().then(() => {
+        achievements.get().then(() => {
+          gracefullyExit();
+        });
+      });
+    });
   });
 }).catch(exitWithError);
 
@@ -60,10 +67,16 @@ Promise.all([
  ******************************************************************************************************************/
 function gracefullyExit() {
   NatsAdapter.shared.client.close();
-  process.exit(0);
+  client.close().then(() =>  {
+    Log.service().info('Exiting world-data service...');
+    process.exit(0);
+  }).catch(error => {
+    Log.service().error(error);
+    process.exit(1);
+  });
 }
 
 function exitWithError(error: any) {
-  Log.service().error(error);
+  // console.log(error);
   process.exit(1);
 }

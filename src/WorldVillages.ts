@@ -60,6 +60,10 @@ export class WorldVillages {
           this.updateCollection(data['villages'])
             .then(() => {
               this.progress += 1;
+
+              NatsAdapter.shared.client.publish('world-data.progress.villages', {
+                progress: this.progress / this.coordinates.length
+              });
               if (this.progress >= this.coordinates.length) {
                 Log.service().info('World villages retrieved.');
                 resolve();
@@ -88,6 +92,7 @@ export class WorldVillages {
         const d = new Date(result['updated_at']);
         if ((new Date().getTime() - 3600_000) > d.getTime()) {
           this.update().then(() => {
+            Log.service().info('Completed villages retrieval');
             resolve();
           });
         } else {
@@ -97,6 +102,7 @@ export class WorldVillages {
       }).catch(error => {
         // assumed to be empty collection
         this.update().then(() => {
+          Log.service().info('Completed villages retrieval');
           resolve();
         });
       });
