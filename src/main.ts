@@ -27,7 +27,7 @@ if (worldId.trim().length == 0 || mongoUri.trim().length == 0 || natsUri.trim().
   process.exit(1);
 }
 
-const ca = fs.readFileSync(__dirname + 'ca.pem');
+const ca = fs.readFileSync(__dirname + '/ssl/ca.pem');
 
 let villages = new WorldVillages(worldId);
 let characters = new WorldCharacters();
