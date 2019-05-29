@@ -1,7 +1,11 @@
 {
   "name": "world-data",
   "version": "1.0.0",
-  "description": "Tribal Wars 2 world data service includes a message-queue and elasticsearch connection",
+  "description": "Tribal Wars 2 world data service includes a message-queue and a mongodb connection",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com:rampadc/toddler-world-data.git"
+  },
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
