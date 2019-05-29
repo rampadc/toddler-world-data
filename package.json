@@ -14,7 +14,6 @@
   "author": "Cong Nguyen",
   "license": "Apache-2.0",
   "dependencies": {
-    "@elastic/elasticsearch": "^7.1.0",
     "bottleneck": "^2.18.1",
     "mongodb": "^3.2.6",
     "ts-nats": "^1.2.4",
