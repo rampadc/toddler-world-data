@@ -44,6 +44,7 @@ const client = new MongoClient(mongoUri, { useNewUrlParser: true });
 Promise.all([
   client.connect(),
   connect({
+    servers: [natsUri],
     payload: Payload.JSON,
     reconnect: true
   })
