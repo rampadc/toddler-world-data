@@ -47,8 +47,9 @@ let options: MongoClientOptions = {
   useNewUrlParser: true
 };
 if (ca != null) {
-  options.sslValidate = true;
+  options.sslValidate = false;
   options.sslCA = [ca];
+  options.ssl = true;
 }
 const client = new MongoClient(mongoUri, options);
 
@@ -65,8 +66,6 @@ Promise.all([
 
   Log.service().info('Connected to MongoDB server');
   DbAdapter.shared.db = client.db('en45');
-
-  villages.updateInternalVariables();
 
   villages.get().then(() => {
     characters.get().then(() => {
@@ -95,6 +94,6 @@ function gracefullyExit() {
 }
 
 function exitWithError(error: any) {
-  // console.log(error);
+  console.log(error);
   process.exit(1);
 }
