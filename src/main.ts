@@ -3,13 +3,15 @@ import {Log} from "./core/Log";
 import {connect, Payload} from 'ts-nats';
 import {Secrets} from "./core/Secrets";
 import {NatsAdapter} from "./core/NatsAdapter";
-import {MongoClient} from "mongodb";
+import {MongoClient, MongoClientOptions} from "mongodb";
 import {DbAdapter} from "./core/DbAdapter";
 
 import {WorldVillages} from "./WorldVillages";
 import {WorldCharacters} from "./WorldCharacters";
 import {WorldTribes} from "./WorldTribes";
 import {WorldAchievements} from "./WorldAchievements";
+
+import fs from 'fs';
 
 /*******************************************************************************************************************
  * Check for credentials
@@ -25,6 +27,8 @@ if (worldId.trim().length == 0 || mongoUri.trim().length == 0 || natsUri.trim().
   process.exit(1);
 }
 
+const ca = fs.readFileSync(__dirname + 'ca.pem');
+
 let villages = new WorldVillages(worldId);
 let characters = new WorldCharacters();
 let tribes = new WorldTribes();
@@ -39,7 +43,14 @@ process.on('SIGINT', function () {
  ******************************************************************************************************************/
 Log.service().info('Initializing world data service...');
 
-const client = new MongoClient(mongoUri, { useNewUrlParser: true });
+let options: MongoClientOptions = {
+  useNewUrlParser: true
+};
+if (ca != null) {
+  options.sslValidate = true;
+  options.sslCA = [ca];
+}
+const client = new MongoClient(mongoUri, options);
 
 Promise.all([
   client.connect(),
