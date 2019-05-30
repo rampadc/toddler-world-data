@@ -31,8 +31,10 @@ export class WorldTribes {
           ], {ordered: true, w: 1}).then(() => {
             this.progress += 1;
 
+            Log.service().debug(`Tribe ${d['tag']} committed. Progress: ${this.progress}/${ids.length}`);
             NatsAdapter.shared.client.publish('world-date.progress.tribes', {
-              progress: this.progress / ids.length
+              progress: this.progress / ids.length,
+              total: ids.length
             });
             if (this.progress >= ids.length) {
               Log.service().info('Completed tribes retrieval.');
@@ -63,6 +65,9 @@ export class WorldTribes {
           limit: 1,
           projection: {updated_at: 1}
         }).then(result => {
+          ids = Array.from(new Set(ids));
+          ids.sort();
+
           const d = new Date(result['updated_at']);
           if ((new Date().getTime() - 3600_000) > d.getTime()) {
             this.update(ids).then(() => {

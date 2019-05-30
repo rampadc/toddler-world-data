@@ -61,8 +61,10 @@ export class WorldVillages {
             .then(() => {
               this.progress += 1;
 
+              Log.service().debug(`Villages for (${data['x']}, ${data['y']}) committed. Progress: ${this.progress}/${this.coordinates.length}`);
               NatsAdapter.shared.client.publish('world-data.progress.villages', {
-                progress: this.progress / this.coordinates.length
+                progress: this.progress / this.coordinates.length,
+                total: this.coordinates.length
               });
               if (this.progress >= this.coordinates.length) {
                 Log.service().info('World villages retrieved.');
