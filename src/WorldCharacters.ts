@@ -17,16 +17,14 @@ export class WorldCharacters {
             character_id: id
           }
         }).then((d: any) => {
+          /* v: new doc, uncommitted */
           d['current'] = true;
+          d['updating'] = true;
           d['updated_at'] = new Date().toISOString();
+
           return this.collection.bulkWrite([
-            {
-              updateMany:
-                {
-                  filter: {character_id: d['character_id']},
-                  update: {$set: {current: false}}
-                }
-            },
+            {updateMany: {filter: {id: d['character_id'], updating: false, current: true}, update: {$set: {updating: true, current: false}}}},
+            {updateMany: {filter: {id: d['character_id']}, update: {$set: {current: false}}}}, // if collection is brand new, the above operation will not occur
             {insertOne: {document: d}}
           ], {ordered: true, w: 1}).then(() => {
             this.progress += 1;
@@ -37,7 +35,6 @@ export class WorldCharacters {
               total: ids.length
             });
             if (this.progress >= ids.length) {
-              Log.service().info('Completed characters retrieval.');
               resolve();
             }
           })
@@ -49,40 +46,76 @@ export class WorldCharacters {
     });
   }
 
-  get(): Promise<void> {
+  finaliseUpdate(): Promise<void> {
+    Log.service().debug('Finalising update...');
+    return new Promise<void>(resolve => {
+      this.collection.updateMany({updating: true}, {$set: {updating: false}}).then(() => {
+        Log.service().info('Completed villages retrieval.');
+        resolve();
+      });
+    });
+  }
+
+  rollback(): Promise<void> {
+    Log.service().debug('Timed out. Rolling back...');
+    return new Promise<void>(resolve => {
+      this.collection.bulkWrite([
+        {remove: {filter: {current: true}}},
+        {updateMany: {filter: {updating: true}, update: {$set: {current: true, updating: false}}}},
+      ], {ordered: true, w: 1}).then(() => {resolve();});
+    });
+  }
+
+  get(timeout_minutes: number = 15): Promise<void> {
     Log.service().info('Starting characters retrieval...');
     return new Promise<void>((resolve, reject) => {
       this.collection = DbAdapter.shared.collection('villages');
-      let cursor = this.collection.find(
-        {current: true, character_id: {$ne: null}}
-      ).project({character_id: 1});
 
-      cursor.map(c => c['character_id']).toArray().then(ids => {
-        this.collection = DbAdapter.shared.collection('characters');
+      let timeout = new Promise<void>((resolve, reject) => {
+        let wait = setTimeout(() => {
+          clearTimeout(wait);
+          reject();
+        }, timeout_minutes * 60_000);
+      });
 
-        this.collection.findOne({}, {
-          sort: {updated_at: -1},
-          limit: 1,
-          projection: {updated_at: 1}
-        }).then(result => {
-          ids = Array.from(new Set(ids));
-          ids.sort();
+      let fetch = new Promise<void>(resolve => {
+        let cursor = this.collection.find(
+          {current: true, character_id: {$ne: null}}
+        ).project({character_id: 1});
 
-          const d = new Date(result['updated_at']);
-          if ((new Date().getTime() - 3600_000) > d.getTime()) {
-            this.update(Array.from(ids)).then(() => {
+        cursor.map(c => c['character_id']).toArray().then(ids => {
+          this.collection = DbAdapter.shared.collection('characters');
+
+          this.collection.findOne({}, {
+            sort: {updated_at: -1},
+            limit: 1,
+            projection: {updated_at: 1}
+          }).then(result => {
+            ids = Array.from(new Set(ids));
+            ids.sort();
+
+            const d = new Date(result['updated_at']);
+            if ((new Date().getTime() - 3600_000) > d.getTime()) {
+              this.update(Array.from(ids)).then(() => {
+                resolve();
+              });
+            } else {
+              Log.service().info('Characters: last update was too recent.');
+              resolve();
+            }
+          }).catch(error => {
+            // assumed to be empty collection
+            this.update(ids).then(() => {
               resolve();
             });
-          } else {
-            Log.service().info('Characters: last update was too recent.');
-            resolve();
-          }
-        }).catch(error => {
-          // assumed to be empty collection
-          this.update(ids).then(() => {
-            resolve();
           });
         });
+      });
+
+      Promise.race([timeout, fetch]).then(() => {
+        this.finaliseUpdate().then(() => {resolve();});
+      }).catch(() => {
+        this.rollback().then(() => {resolve();})
       });
     });
   };

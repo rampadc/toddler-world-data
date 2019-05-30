@@ -3,7 +3,6 @@ import {NatsAdapter} from "./core/NatsAdapter";
 import {Collection} from "mongodb";
 import {DbAdapter} from "./core/DbAdapter";
 import {Log} from "./core/Log";
-import {error} from "winston";
 
 export interface Point {
   x: number;
@@ -13,7 +12,7 @@ export interface Point {
 export class WorldVillages {
   coordinates: Point[] = [];
   worldId: string;
-  separation = 50;
+  separation = 20;
 
   progress = 0;
   private collection: Collection;
@@ -30,16 +29,17 @@ export class WorldVillages {
     this.worldId = worldId;
   }
 
-  updateInternalVariables() {
-    this.collection = DbAdapter.shared.collection('villages');
-  }
-
   updateCollection(villages: any[]): Promise<any[]> {
     return Promise.all(villages.map((v: any) => {
+      /* v: new doc, uncommitted */
       v['current'] = true;
+      v['updating'] = true;
       v['updated_at'] = new Date().toISOString();
+
+      /* Updating, set all current docs to have current=false, existing current=true doc with same ID set to current=false, updating=true */
       return this.collection.bulkWrite([
-        {updateMany: {filter: {id: v['id']}, update: {$set: {current: false}}}},
+        {updateMany: {filter: {id: v['id'], updating: false, current: true}, update: {$set: {updating: true, current: false}}}},
+        {updateMany: {filter: {id: v['id']}, update: {$set: {current: false}}}}, // if collection is brand new, the above operation will not occur
         {insertOne: {document: v}}
       ], {ordered: true, w: 1});
     }));
@@ -67,7 +67,6 @@ export class WorldVillages {
                 total: this.coordinates.length
               });
               if (this.progress >= this.coordinates.length) {
-                Log.service().info('World villages retrieved.');
                 resolve();
               }
             }).catch(error => {
@@ -82,33 +81,67 @@ export class WorldVillages {
     });
   }
 
-  get(): Promise<void> {
+  finaliseUpdate(): Promise<void> {
+    Log.service().debug('Finalising update...');
+    return new Promise<void>(resolve => {
+      this.collection.updateMany({updating: true}, {$set: {updating: false}}).then(() => {
+        Log.service().info('Completed villages retrieval.');
+        resolve();
+      });
+    });
+  }
+
+  rollback(): Promise<void> {
+    Log.service().debug('Timed out. Rolling back...');
+    return new Promise<void>(resolve => {
+      this.collection.bulkWrite([
+        {remove: {filter: {current: true}}},
+        {updateMany: {filter: {updating: true}, update: {$set: {current: true, updating: false}}}},
+      ], {ordered: true, w: 1}).then(() => {resolve();});
+    });
+  }
+
+  get(timeout_minutes: number = 15): Promise<void> {
     Log.service().info('Starting villages retrieval...');
 
-    this.collection = DbAdapter.shared.collection('villages');
-    return new Promise<void>((resolve, reject) => {
-      // get latest updated_at date
-      this.collection.findOne({}, {
-        sort: {updated_at: -1},
-        limit: 1,
-        projection: {updated_at: 1}
-      }).then(result => {
-        const d = new Date(result['updated_at']);
-        if ((new Date().getTime() - 3600_000) > d.getTime()) {
+    return new Promise<void>((resolve) => {
+      this.collection = DbAdapter.shared.collection('villages');
+
+      let timeout = new Promise<void>((resolve, reject) => {
+        let wait = setTimeout(() => {
+          clearTimeout(wait);
+          reject();
+        }, timeout_minutes * 60_000);
+      });
+
+      let fetch = new Promise<void>((resolve, reject) => {
+        // get latest updated_at date
+        this.collection.findOne({}, {
+          sort: {updated_at: -1},
+          limit: 1,
+          projection: {updated_at: 1}
+        }).then(result => {
+          const d = new Date(result['updated_at']);
+          if ((new Date().getTime() - 3600_000) > d.getTime()) {
+            this.update().then(() => {
+              resolve();
+            });
+          } else {
+            Log.service().info('Last update was too recent.');
+            resolve();
+          }
+        }).catch(error => {
+          // assumed to be empty collection
           this.update().then(() => {
-            Log.service().info('Completed villages retrieval');
             resolve();
           });
-        } else {
-          Log.service().info('Last update was too recent.');
-          resolve();
-        }
-      }).catch(error => {
-        // assumed to be empty collection
-        this.update().then(() => {
-          Log.service().info('Completed villages retrieval');
-          resolve();
         });
+      });
+
+      Promise.race([timeout, fetch]).then(() => {
+        this.finaliseUpdate().then(() => {resolve();});
+      }).catch(() => {
+        this.rollback().then(() => {resolve();})
       });
     });
   }
