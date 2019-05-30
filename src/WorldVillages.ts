@@ -82,6 +82,8 @@ export class WorldVillages {
 
   get(): Promise<void> {
     Log.service().info('Starting villages retrieval...');
+
+    this.collection = DbAdapter.shared.collection('villages');
     return new Promise<void>((resolve, reject) => {
       // get latest updated_at date
       this.collection.findOne({}, {

@@ -27,8 +27,6 @@ if (worldId.trim().length == 0 || mongoUri.trim().length == 0 || natsUri.trim().
   process.exit(1);
 }
 
-const ca = fs.readFileSync(__dirname + '/ssl/ca.pem');
-
 let villages = new WorldVillages(worldId);
 let characters = new WorldCharacters();
 let tribes = new WorldTribes();
@@ -46,10 +44,14 @@ Log.service().info('Initializing world data service...');
 let options: MongoClientOptions = {
   useNewUrlParser: true
 };
-if (ca != null) {
-  options.sslValidate = false;
-  options.sslCA = [ca];
-  options.ssl = true;
+if (fs.existsSync(__dirname + '/ssl/ca.pem')) {
+  console.log('File exists');
+  const ca = fs.readFileSync(__dirname + '/ssl/ca.pem');
+  if (ca != null) {
+    options.sslValidate = false;
+    options.sslCA = [ca];
+    options.ssl = true;
+  }
 }
 const client = new MongoClient(mongoUri, options);
 
