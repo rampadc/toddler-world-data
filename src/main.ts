@@ -45,7 +45,6 @@ let options: MongoClientOptions = {
   useNewUrlParser: true
 };
 if (fs.existsSync(__dirname + '/ssl/ca.pem')) {
-  console.log('File exists');
   const ca = fs.readFileSync(__dirname + '/ssl/ca.pem');
   if (ca != null) {
     options.sslValidate = false;
@@ -65,6 +64,13 @@ Promise.all([
 ]).then(values => {
   Log.service().info('Connected to NATS server');
   NatsAdapter.shared.client = values[1];
+
+  NatsAdapter.shared.client.request('authenticator.running', 2000).then(msg => {
+    if (!(msg.data['running'] as boolean)) {
+      Log.service().error('Authenticator is not running');
+      process.exit(1);
+    }
+  });
 
   Log.service().info('Connected to MongoDB server');
   DbAdapter.shared.db = client.db('en45');

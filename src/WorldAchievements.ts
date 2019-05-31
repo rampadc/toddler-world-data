@@ -59,10 +59,11 @@ export class WorldAchievements {
   rollback(): Promise<void> {
     Log.service().debug('Timed out. Rolling back...');
     return new Promise<void>(resolve => {
-      this.collection.bulkWrite([
-        {remove: {filter: {current: true}}},
-        {updateMany: {filter: {updating: true}, update: {$set: {current: true, updating: false}}}},
-      ], {ordered: true, w: 1}).then(() => {resolve();});
+      this.collection.deleteMany({current: true}).then(() => {
+        this.collection.bulkWrite([
+          {updateMany: {filter: {updating: true}, update: {$set: {current: true, updating: false}}}},
+        ], {ordered: true, w: 1}).then(() => {resolve();});
+      });
     });
   }
 
