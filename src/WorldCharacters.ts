@@ -30,7 +30,7 @@ export class WorldCharacters {
             this.progress += 1;
 
             Log.service().debug(`Character ${d['character_id']} committed. Progress: ${this.progress}/${ids.length}`);
-            NatsAdapter.shared.client.publish('world-date.progress.characters', {
+            NatsAdapter.shared.client.publish('world-data.progress.characters', {
               progress: this.progress / ids.length,
               total: ids.length
             });

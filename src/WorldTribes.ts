@@ -30,7 +30,7 @@ export class WorldTribes {
             this.progress += 1;
 
             Log.service().debug(`Tribe ${d['tag']} committed. Progress: ${this.progress}/${ids.length}`);
-            NatsAdapter.shared.client.publish('world-date.progress.tribes', {
+            NatsAdapter.shared.client.publish('world-data.progress.tribes', {
               progress: this.progress / ids.length,
               total: ids.length
             });
