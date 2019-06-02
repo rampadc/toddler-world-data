@@ -30,19 +30,25 @@ export class WorldVillages {
   }
 
   updateCollection(villages: any[]): Promise<any[]> {
-    return Promise.all(villages.map((v: any) => {
-      /* v: new doc, uncommitted */
-      v['current'] = true;
-      v['updating'] = true;
-      v['updated_at'] = new Date().toISOString();
+    if (villages.length == 0) {
+      return new Promise<any[]>(resolve => {
+        resolve();
+      });
+    } else {
+      return Promise.all(villages.map((v: any) => {
+        /* v: new doc, uncommitted */
+        v['current'] = true;
+        v['updating'] = true;
+        v['updated_at'] = new Date().toISOString();
 
-      /* Updating, set all current docs to have current=false, existing current=true doc with same ID set to current=false, updating=true */
-      return this.collection.bulkWrite([
-        {updateMany: {filter: {id: v['id'], updating: false, current: true}, update: {$set: {updating: true, current: false}}}},
-        {updateMany: {filter: {id: v['id']}, update: {$set: {current: false}}}}, // if collection is brand new, the above operation will not occur
-        {insertOne: {document: v}}
-      ], {ordered: true, w: 1});
-    }));
+        /* Updating, set all current docs to have current=false, existing current=true doc with same ID set to current=false, updating=true */
+        return this.collection.bulkWrite([
+          {updateMany: {filter: {id: v['id'], updating: false, current: true}, update: {$set: {updating: true, current: false}}}},
+          {updateMany: {filter: {id: v['id']}, update: {$set: {current: false}}}}, // if collection is brand new, the above operation will not occur
+          {insertOne: {document: v}}
+        ], {ordered: true, w: 1});
+      }));
+    }
   }
 
   update(): Promise<void> {
