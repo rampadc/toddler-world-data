@@ -114,9 +114,14 @@ export class WorldCharacters {
       });
 
       Promise.race([timeout, fetch]).then(() => {
-        this.finaliseUpdate().then(() => {resolve();});
+        this.finaliseUpdate().then(() => {
+          NatsAdapter.shared.client.publish('world-data.completed.characters');
+          resolve();});
       }).catch(() => {
-        this.rollback().then(() => {resolve();})
+        this.rollback().then(() => {
+          NatsAdapter.shared.client.publish('world-data.completed.characters');
+          resolve();
+        })
       });
     });
   };

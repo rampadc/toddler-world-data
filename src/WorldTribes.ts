@@ -114,9 +114,15 @@ export class WorldTribes {
       });
 
       Promise.race([timeout, fetch]).then(() => {
-        this.finaliseUpdate().then(() => {resolve();});
+        this.finaliseUpdate().then(() => {
+          NatsAdapter.shared.client.publish('world-data.completed.tribes');
+          resolve();
+        });
       }).catch(() => {
-        this.rollback().then(() => {resolve();})
+        this.rollback().then(() => {
+          NatsAdapter.shared.client.publish('world-data.completed.tribes');
+          resolve();
+        });
       });
     });
   };
